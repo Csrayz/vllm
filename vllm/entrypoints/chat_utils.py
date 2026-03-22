@@ -11,7 +11,15 @@ from dataclasses import dataclass
 from functools import cached_property, lru_cache, partial
 from itertools import accumulate
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Generic, Literal, TypeAlias, TypeVar, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Generic,
+    Literal,
+    TypeAlias,
+    TypeVar,
+    cast,
+)
 
 from openai.types.chat import (
     ChatCompletionAssistantMessageParam,
@@ -1078,6 +1086,24 @@ class ChatTemplateConfig:
     chat_template: str | None = None
     chat_template_content_format: ChatTemplateContentFormatOption = "auto"
     trust_request_chat_template: bool = False
+
+
+@dataclass
+class UsagePolicy:
+    """
+    Policy for controlling usage statistics return behavior.
+
+    Fields:
+        include_usage: Controls when to include usage in responses.
+            - default_include_usage: Include usage in the response by
+                default
+            - always: Always include usage information
+        continuous_usage: Controls continuous usage stats during streaming.
+            - always: Send usage on every chunk (only valid if include_usage is enabled)
+    """
+
+    include_usage: Literal["default_include_usage", "always"] | None = None
+    continuous_usage: Literal["always"] | None = None
 
 
 def validate_chat_template(chat_template: Path | str | None):

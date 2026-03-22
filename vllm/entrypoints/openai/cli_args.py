@@ -136,8 +136,29 @@ class BaseFrontendArgs:
     """If set to True, enable prompt_tokens_details in usage."""
     enable_server_load_tracking: bool = False
     """If set to True, enable tracking server_load_metrics in the app state."""
+    include_usage_policy: str | None = None
+    """
+    Policy for usage statistics return behavior.
+    Possible values:
+        - "default_include_usage": Include usage by default, but can
+            be overridden based on stream_options.
+        - "always": Always include usage in responses, ignoring
+            stream_options.
+        - None: default behavior.
+    """
+    continuous_usage_policy: str | None = None
+    """
+    Policy for continuous usage statistics during streaming.
+    Possible values:
+        - "always": Send usage on every chunk, if include_usage is enabled.
+        - None: default behavior.
+    """
     enable_force_include_usage: bool = False
-    """If set to True, including usage on every request."""
+    """
+    [Deprecated]
+    If set to True, including usage on every request. Use
+    `--include-usage-policy=always` instead.
+    """
     enable_tokenizer_info_endpoint: bool = False
     """Enable the `/tokenizer_info` endpoint. May expose chat
     templates and other tokenizer configuration."""
@@ -364,6 +385,23 @@ def validate_parsed_serve_args(args: argparse.Namespace):
         raise TypeError("Error: --enable-auto-tool-choice requires --tool-call-parser")
     if args.enable_log_outputs and not args.enable_log_requests:
         raise TypeError("Error: --enable-log-outputs requires --enable-log-requests")
+
+    # Validate include_usage_policy
+    valid_usage_policies = (None, "default_include_usage", "always")
+    if args.include_usage_policy not in valid_usage_policies:
+        raise TypeError(
+            f"Error: --include-usage-policy must be "
+            f"'default_include_usage', 'always', or omitted, "
+            f"got '{args.include_usage_policy}'"
+        )
+
+    # Validate continuous_usage_policy
+    valid_continuous_usage_policies = (None, "always")
+    if args.continuous_usage_policy not in valid_continuous_usage_policies:
+        raise TypeError(
+            f"Error: --continuous-usage-policy must be 'always' or omitted, "
+            f"got '{args.continuous_usage_policy}'"
+        )
 
 
 def create_parser_for_docs() -> FlexibleArgumentParser:

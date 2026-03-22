@@ -15,6 +15,7 @@ from transformers import PreTrainedTokenizerBase
 
 import vllm.envs as envs
 from vllm.engine.protocol import EngineClient
+from vllm.entrypoints.chat_utils import UsagePolicy
 from vllm.entrypoints.logger import RequestLogger
 from vllm.entrypoints.openai.engine.protocol import (
     DeltaMessage,
@@ -81,7 +82,7 @@ class OpenAISpeechToText(OpenAIServing):
         request_logger: RequestLogger | None,
         return_tokens_as_token_ids: bool = False,
         task_type: Literal["transcribe", "translate"] = "transcribe",
-        enable_force_include_usage: bool = False,
+        usage_policy: UsagePolicy | None = None,
     ):
         super().__init__(
             engine_client=engine_client,
@@ -97,7 +98,9 @@ class OpenAISpeechToText(OpenAIServing):
             self.model_config, task_type
         )
 
-        self.enable_force_include_usage = enable_force_include_usage
+        self.enable_force_include_usage = bool(
+            usage_policy is not None and usage_policy.include_usage == "always"
+        )
 
         self.max_audio_filesize_mb = envs.VLLM_MAX_AUDIO_CLIP_FILESIZE_MB
         if self.model_cls.supports_segment_timestamp:

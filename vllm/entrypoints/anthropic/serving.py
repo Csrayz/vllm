@@ -71,7 +71,7 @@ class AnthropicServingMessages(OpenAIServingChat):
         enable_auto_tools: bool = False,
         tool_parser: str | None = None,
         enable_prompt_tokens_details: bool = False,
-        enable_force_include_usage: bool = False,
+        usage_policy=None,
     ):
         super().__init__(
             engine_client=engine_client,
@@ -86,7 +86,7 @@ class AnthropicServingMessages(OpenAIServingChat):
             enable_auto_tools=enable_auto_tools,
             tool_parser=tool_parser,
             enable_prompt_tokens_details=enable_prompt_tokens_details,
-            enable_force_include_usage=enable_force_include_usage,
+            usage_policy=usage_policy,
         )
         self.stop_reason_map = {
             "stop": "end_turn",

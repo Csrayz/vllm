@@ -18,6 +18,7 @@ from vllm.engine.protocol import EngineClient
 from vllm.entrypoints.chat_utils import (
     ChatTemplateContentFormatOption,
     ConversationMessage,
+    UsagePolicy,
     get_history_tool_calls_cnt,
     get_tool_call_id_type,
     make_tool_call_id,
@@ -102,7 +103,7 @@ class OpenAIServingChat(OpenAIServing):
         exclude_tools_when_tool_choice_none: bool = False,
         tool_parser: str | None = None,
         enable_prompt_tokens_details: bool = False,
-        enable_force_include_usage: bool = False,
+        usage_policy: UsagePolicy | None = None,
         enable_log_outputs: bool = False,
         enable_log_deltas: bool = True,
         default_chat_template_kwargs: dict[str, Any] | None = None,
@@ -116,6 +117,7 @@ class OpenAIServingChat(OpenAIServing):
 
         self.openai_serving_render = openai_serving_render
         self.response_role = response_role
+        self.usage_policy = usage_policy
         self.chat_template = chat_template
         self.chat_template_content_format: Final = chat_template_content_format
         self.trust_request_chat_template = trust_request_chat_template
@@ -137,7 +139,6 @@ class OpenAIServingChat(OpenAIServing):
         self.exclude_tools_when_tool_choice_none = exclude_tools_when_tool_choice_none
 
         self.enable_prompt_tokens_details = enable_prompt_tokens_details
-        self.enable_force_include_usage = enable_force_include_usage
         self.default_sampling_params = self.model_config.get_diff_sampling_param()
         mc = self.model_config
         self.override_max_tokens = (
@@ -578,7 +579,7 @@ class OpenAIServingChat(OpenAIServing):
 
         stream_options = request.stream_options
         include_usage, include_continuous_usage = should_include_usage(
-            stream_options, self.enable_force_include_usage
+            stream_options, self.usage_policy
         )
 
         try:

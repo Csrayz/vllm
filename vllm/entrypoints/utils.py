@@ -17,6 +17,7 @@ from starlette.background import BackgroundTask, BackgroundTasks
 
 from vllm import envs
 from vllm.engine.arg_utils import EngineArgs
+from vllm.entrypoints.chat_utils import UsagePolicy
 from vllm.entrypoints.openai.engine.protocol import (
     ErrorInfo,
     ErrorResponse,
@@ -234,15 +235,39 @@ def log_non_default_args(args: Namespace | EngineArgs):
 
 
 def should_include_usage(
-    stream_options: "StreamOptions | None", enable_force_include_usage: bool
+    stream_options: "StreamOptions | None",
+    usage_policy: "UsagePolicy | None",
 ) -> tuple[bool, bool]:
-    if stream_options:
-        include_usage = stream_options.include_usage or enable_force_include_usage
-        include_continuous_usage = include_usage and bool(
-            stream_options.continuous_usage_stats
+    if usage_policy is not None and usage_policy.include_usage is not None:
+        assert usage_policy.include_usage in ("always", "default_include_usage"), (
+            f"Unknown include_usage policy {usage_policy.include_usage}"
+        )
+        if usage_policy.include_usage == "always":
+            include_usage = True
+        elif usage_policy.include_usage == "default_include_usage":
+            include_usage = (
+                stream_options.include_usage if stream_options is not None else False
+            )
+    else:
+        # True only stream_options.include_usage is True.
+        include_usage = bool(
+            stream_options is not None and stream_options.include_usage
+        )
+
+    if usage_policy is not None and usage_policy.continuous_usage is not None:
+        assert usage_policy.continuous_usage in ("always",), (
+            f"Unknown continuous_usage policy {usage_policy.continuous_usage}"
+        )
+        include_continuous_usage = include_usage and (
+            usage_policy.continuous_usage == "always"
         )
     else:
-        include_usage, include_continuous_usage = enable_force_include_usage, False
+        include_continuous_usage = (
+            include_usage
+            and stream_options is not None
+            and stream_options.continuous_usage
+        )
+
     return include_usage, include_continuous_usage
 
 

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, cast
 from fastapi import Request
 
 from vllm.engine.protocol import EngineClient
+from vllm.entrypoints.chat_utils import UsagePolicy
 from vllm.entrypoints.logger import RequestLogger
 from vllm.entrypoints.openai.completion.protocol import (
     CompletionLogProbs,
@@ -58,7 +59,7 @@ class OpenAIServingCompletion(OpenAIServing):
         request_logger: RequestLogger | None,
         return_tokens_as_token_ids: bool = False,
         enable_prompt_tokens_details: bool = False,
-        enable_force_include_usage: bool = False,
+        usage_policy: UsagePolicy | None = None,
     ):
         super().__init__(
             engine_client=engine_client,
@@ -69,7 +70,7 @@ class OpenAIServingCompletion(OpenAIServing):
 
         self.openai_serving_render = openai_serving_render
         self.enable_prompt_tokens_details = enable_prompt_tokens_details
-        self.enable_force_include_usage = enable_force_include_usage
+        self.usage_policy = usage_policy
 
         self.default_sampling_params = self.model_config.get_diff_sampling_param()
         mc = self.model_config
@@ -287,7 +288,7 @@ class OpenAIServingCompletion(OpenAIServing):
 
         stream_options = request.stream_options
         include_usage, include_continuous_usage = should_include_usage(
-            stream_options, self.enable_force_include_usage
+            stream_options, self.usage_policy
         )
 
         try:
