@@ -3,7 +3,13 @@
 
 import pytest
 
-from vllm.entrypoints.utils import get_max_tokens, sanitize_message
+from vllm.entrypoints.chat_utils import UsagePolicy
+from vllm.entrypoints.openai.engine.protocol import StreamOptions
+from vllm.entrypoints.utils import (
+    get_max_tokens,
+    sanitize_message,
+    should_include_usage,
+)
 
 
 def test_sanitize_message():
@@ -94,3 +100,99 @@ class TestGetMaxTokens:
                 input_length=150,
                 default_sampling_params={"max_tokens": 2048},
             )
+
+
+class TestShouldIncludeUsage:
+    """Tests for should_include_usage() function."""
+
+    def test_no_usage_policy_no_stream_options(self):
+        """Both usage_policy and stream_options are None."""
+        include_usage, include_continuous = should_include_usage(None, None)
+        assert include_usage is False
+        assert include_continuous is False
+
+    def test_no_usage_stream_options(self):
+        """stream_options controls behavior."""
+        stream_options = StreamOptions(
+            include_usage=False, continuous_usage_stats=False
+        )
+        include_usage, include_continuous = should_include_usage(stream_options, None)
+        assert include_usage is False
+        assert include_continuous is False
+
+    def test_include_usage_with_stream_options(self):
+        """stream_options controls behavior."""
+        stream_options = StreamOptions(include_usage=True, continuous_usage_stats=True)
+        include_usage, include_continuous = should_include_usage(stream_options, None)
+        assert include_usage is True
+        assert include_continuous is True
+
+    def test_include_usage_stream_options(self):
+        """stream_options controls behavior."""
+        stream_options = StreamOptions(include_usage=True, continuous_usage_stats=False)
+        include_usage, include_continuous = should_include_usage(stream_options, None)
+        assert include_usage is True
+        assert include_continuous is False
+
+    def test_no_usage_with_stream_options(self):
+        """stream_options controls behavior."""
+        stream_options = StreamOptions(include_usage=False, continuous_usage_stats=True)
+        include_usage, include_continuous = should_include_usage(stream_options, None)
+        assert include_usage is False
+        assert include_continuous is False
+
+    def test_always_usage_policy_no_stream_options(self):
+        """usage_policy always controls behavior."""
+        stream_options = None
+        usage_policy = UsagePolicy(include_usage="always")
+        include_usage, include_continuous = should_include_usage(
+            stream_options, usage_policy
+        )
+        assert include_usage is True
+        assert include_continuous is False
+
+    def test_always_usage_policy_with_stream_options(self):
+        """usage_policy always controls behavior."""
+        stream_options = StreamOptions(
+            include_usage=False, continuous_usage_stats=False
+        )
+        usage_policy = UsagePolicy(include_usage="always")
+        include_usage, include_continuous = should_include_usage(
+            stream_options, usage_policy
+        )
+        assert include_usage is True
+        assert include_continuous is False
+
+    def test_default_include_usage_no_stream_options(self):
+        """usage_policy default_include_usage follows stream_options."""
+        stream_options = None
+        usage_policy = UsagePolicy(include_usage="default_include_usage")
+        include_usage, include_continuous = should_include_usage(
+            stream_options, usage_policy
+        )
+        assert include_usage is True
+        assert include_continuous is False
+
+    def test_default_include_usage_with_stream_options(self):
+        """usage_policy default_include_usage follows stream_options."""
+        stream_options = StreamOptions(
+            include_usage=False, continuous_usage_stats=False
+        )
+        usage_policy = UsagePolicy(include_usage="default_include_usage")
+        include_usage, include_continuous = should_include_usage(
+            stream_options, usage_policy
+        )
+        assert include_usage is False
+        assert include_continuous is False
+
+    def test_always_continuous_usage_no_stream_options(self):
+        """usage_policy always controls behavior."""
+        stream_options = StreamOptions(
+            include_usage=False, continuous_usage_stats=False
+        )
+        usage_policy = UsagePolicy(continuous_usage="always")
+        include_usage, include_continuous = should_include_usage(
+            stream_options, usage_policy
+        )
+        assert include_usage is True
+        assert include_continuous is True

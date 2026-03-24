@@ -127,11 +127,14 @@ def init_transcription_state(
     request_logger: RequestLogger | None,
     supported_tasks: tuple["SupportedTask", ...],
 ):
+    include_usage = (
+        "always" if args.enable_force_include_usage else args.include_usage_policy
+    )
+    continuous_usage = args.continuous_usage_policy
+    if continuous_usage == "always" and include_usage is None:
+        include_usage = "always"
     usage_policy = UsagePolicy(
-        include_usage="always"
-        if args.enable_force_include_usage
-        else args.include_usage_policy,
-        continuous_usage=args.continuous_usage_policy,
+        include_usage=include_usage, continuous_usage=continuous_usage
     )
 
     state.openai_serving_transcription = (

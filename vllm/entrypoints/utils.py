@@ -238,35 +238,29 @@ def should_include_usage(
     stream_options: "StreamOptions | None",
     usage_policy: "UsagePolicy | None",
 ) -> tuple[bool, bool]:
-    if usage_policy is not None and usage_policy.include_usage is not None:
-        assert usage_policy.include_usage in ("always", "default_include_usage"), (
-            f"Unknown include_usage policy {usage_policy.include_usage}"
-        )
-        if usage_policy.include_usage == "always":
-            include_usage = True
-        elif usage_policy.include_usage == "default_include_usage":
-            include_usage = (
-                stream_options.include_usage if stream_options is not None else False
-            )
-    else:
-        # True only stream_options.include_usage is True.
-        include_usage = bool(
-            stream_options is not None and stream_options.include_usage
-        )
+    has_continuous_always = (
+        usage_policy is not None and usage_policy.continuous_usage == "always"
+    )
+    effective_include = (
+        "always"
+        if has_continuous_always
+        else (usage_policy.include_usage if usage_policy else None)
+    )
 
-    if usage_policy is not None and usage_policy.continuous_usage is not None:
-        assert usage_policy.continuous_usage in ("always",), (
-            f"Unknown continuous_usage policy {usage_policy.continuous_usage}"
-        )
-        include_continuous_usage = include_usage and (
-            usage_policy.continuous_usage == "always"
-        )
+    if effective_include == "always":
+        include_usage = True
+    elif effective_include == "default_include_usage":
+        include_usage = stream_options is None or stream_options.include_usage
     else:
-        include_continuous_usage = (
-            include_usage
-            and stream_options is not None
-            and stream_options.continuous_usage
-        )
+        include_usage = stream_options is not None and stream_options.include_usage
+
+    include_continuous_usage = (
+        include_usage
+        and stream_options is not None
+        and stream_options.continuous_usage_stats
+        if not has_continuous_always
+        else True
+    )
 
     return include_usage, include_continuous_usage
 
