@@ -541,6 +541,8 @@ class OpenAIServingCompletion(OpenAIServing):
 
             num_prompt_tokens += len(prompt_token_ids)
 
+        # Non-streaming responses always include usage per OpenAI API spec
+        # so we treat it as include_usage_policy "always"
         usage = UsageInfo(
             prompt_tokens=num_prompt_tokens,
             completion_tokens=num_generated_tokens,

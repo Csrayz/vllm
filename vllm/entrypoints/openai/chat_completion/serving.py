@@ -1594,6 +1594,8 @@ class OpenAIServingChat(OpenAIServing):
         num_generated_tokens = sum(
             len(output.token_ids) for output in final_res.outputs
         )
+        # Non-streaming responses always include usage per OpenAI API spec
+        # so we treat it as include_usage_policy "always"
         usage = UsageInfo(
             prompt_tokens=num_prompt_tokens,
             completion_tokens=num_generated_tokens,
