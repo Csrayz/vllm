@@ -4,10 +4,15 @@
 """
 Simplified integration tests for usage policy configuration in Completion API.
 
-Tests verify default behavior (no usage policy):
-1. Non-streaming: Should return usage in response
-2. Streaming without stream_options: Should NOT return usage in chunks
-3. Streaming with stream_options.include_usage: Should return usage in final chunk
+Tests verify two scenarios:
+1. Default behavior (no usage policy):
+   - Non-streaming: Should return usage in response
+   - Streaming without stream_options: Should NOT return usage in chunks
+   - Streaming with stream_options.include_usage: Should return usage in final chunk
+
+2. Always policy (--include-usage-policy=always --continuous-usage-policy=always):
+   - Non-streaming: Should return usage in response
+   - Streaming: Every chunk should have usage (continuous)
 
 Based on test_serving_chat.py pattern.
 """
@@ -34,15 +39,39 @@ def server_args():
     return BASE_ARGS
 
 
+@pytest.fixture(scope="module")
+def always_server_args():
+    return BASE_ARGS + [
+        "--include-usage-policy",
+        "always",
+        "--continuous-usage-policy",
+        "always",
+    ]
+
+
 @pytest.fixture(scope="class")
 def server(server_args):
     with RemoteOpenAIServer(MODEL_NAME, server_args) as remote_server:
         yield remote_server
 
 
+@pytest.fixture(scope="class")
+def always_server(always_server_args):
+    with RemoteOpenAIServer(
+        MODEL_NAME, always_server_args, max_wait_seconds=480
+    ) as remote_server:
+        yield remote_server
+
+
 @pytest_asyncio.fixture
 async def client(server):
     async with server.get_async_client() as async_client:
+        yield async_client
+
+
+@pytest_asyncio.fixture
+async def always_client(always_server):
+    async with always_server.get_async_client() as async_client:
         yield async_client
 
 
@@ -109,3 +138,46 @@ class TestUsagePolicyDefault:
         assert final_chunk_with_usage, (
             "Should have final usage chunk when stream_options.include_usage=True"
         )
+
+
+class TestUsagePolicyAlways:
+    @pytest.mark.asyncio
+    async def test_non_streaming(self, always_client: openai.AsyncOpenAI):
+        """Always policy: Non-streaming should return usage."""
+        response = await always_client.completions.create(
+            model=MODEL_NAME,
+            prompt="Hello, my name is",
+            max_tokens=5,
+            temperature=0.0,
+            stream=False,
+        )
+
+        assert response.usage is not None, (
+            "Always policy non-streaming should have usage"
+        )
+        assert response.usage.prompt_tokens > 0
+        assert response.usage.completion_tokens > 0
+
+    @pytest.mark.asyncio
+    async def test_streaming_continuous_usage(self, always_client: openai.AsyncOpenAI):
+        """Always policy: Streaming should return usage in EVERY chunk."""
+        stream = await always_client.completions.create(
+            model=MODEL_NAME,
+            prompt="Hello, my name is",
+            max_tokens=5,
+            temperature=0.0,
+            stream=True,
+        )
+
+        chunk_count = 0
+        completion_tokens = 0
+
+        async for chunk in stream:
+            chunk_count += 1
+            assert chunk.usage is not None, "Every chunk must have usage"
+            assert chunk.usage.prompt_tokens > 0
+            # completion_tokens is cumulative
+            assert chunk.usage.completion_tokens >= completion_tokens
+            completion_tokens = chunk.usage.completion_tokens
+
+        assert chunk_count > 0, "Should have received at least one chunk"
