@@ -33,7 +33,6 @@ from vllm.entrypoints.serve.disagg.protocol import (
     GenerateStreamResponse,
 )
 from vllm.entrypoints.serve.render.serving import OpenAIServingRender
-from vllm.entrypoints.utils import should_include_usage
 from vllm.logger import init_logger
 from vllm.logprobs import Logprob
 from vllm.outputs import RequestOutput
@@ -264,8 +263,16 @@ class ServingTokens(OpenAIServing):
         num_cached_tokens = None
         sampling_params: SamplingParams = request.sampling_params
 
-        include_usage, include_continuous_usage = should_include_usage(
-            request.stream_options, False
+        include_usage, include_continuous_usage = self.should_include_usage(
+            is_streaming=True,
+            include_usage=(
+                request.stream_options.include_usage if request.stream_options else None
+            ),
+            continuous_usage=(
+                request.stream_options.continuous_usage_stats
+                if request.stream_options
+                else None
+            ),
         )
 
         try:
