@@ -1089,12 +1089,11 @@ class UsagePolicy:
     Fields:
         include_usage: Controls when to include usage in responses.
             - always: Always include usage information in responses.
-            - None: Do not include usage by default (can be overridden
-              by stream_options in streaming requests).
+            - None: Use the vendor's default behavior.
         continuous_usage: Controls continuous usage stats during streaming.
             - always: Send usage on every chunk (only valid if include_usage
               is enabled).
-            - None: No continuous usage stats.
+            - None: Use the vendor's default behavior.
     """
 
     include_usage: Literal["always"] | None = None
