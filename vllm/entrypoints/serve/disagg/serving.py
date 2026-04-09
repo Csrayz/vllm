@@ -398,3 +398,27 @@ class ServingTokens(OpenAIServing):
                 )
 
         return ChatCompletionLogProbs(content=logprobs_content)
+
+    def should_include_usage(
+        self,
+        *,
+        is_streaming: bool,
+        include_usage: bool | None = None,
+        continuous_usage: bool | None = None,
+    ) -> tuple[bool, bool]:
+        if not is_streaming:
+            return (True, False)
+
+        include_usage = False if include_usage is None else include_usage
+        include_continuous_usage = (
+            False if continuous_usage is None or not include_usage else continuous_usage
+        )
+
+        policy = self.usage_policy
+        if policy is not None:
+            if policy.include_usage == "always":
+                include_usage = True
+            if policy.continuous_usage == "always":
+                include_continuous_usage = True
+
+        return (include_usage, include_continuous_usage)
